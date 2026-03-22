@@ -27,3 +27,39 @@ HAVING COUNT(sp.opportunity_id)>50
 ORDER BY avg_close_value DESC;
 
 select * from close_value_per_sector;
+
+-- Deal Velocity Buckets --
+CREATE OR REPLACE VIEW Deal_Velocity_Buckets AS
+SELECT 
+	CASE
+		WHEN datediff(sp.close_date,sp.engage_date) < 30 THEN "Fast"
+		WHEN datediff(sp.close_date,sp.engage_date) BETWEEN 30 AND 90 THEN "Medium"
+		WHEN datediff(sp.close_date,sp.engage_date) > 90 THEN "Slow"
+    END AS deal_velocity,
+    COUNT(*) AS Won_deal_count
+FROM sales_pipeline sp
+WHERE deal_stage="Won"
+GROUP BY 1;
+
+select * from deal_velocity_buckets;
+
+
+-- Under price analysis
+WITH Price_comparison AS (
+SELECT 
+	sp.opportunity_id,
+    p.product,
+    sp.close_value,
+    p.sales_price AS sales_price,
+    (sp.close_value-p.sales_price) AS earned_profit,
+    ROUND(((sp.close_value-p.sales_price)/SUM(CASE WHEN (sp.close_value-p.sales_price) > 0 THEN (sp.close_value-p.sales_price) ELSE 0 END) 
+    OVER())*100,3) AS Percentage_of_profit
+FROM sales_pipeline sp
+JOIN products p
+	ON sp.product=p.product
+WHERE sp.deal_stage ="Won"
+) 
+
+SELECT * FROM Price_comparison
+WHERE earned_profit>0 AND percentage_of_profit > 0.3
+ORDER BY earned_profit DESC;
