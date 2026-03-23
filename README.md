@@ -1,2 +1,1 @@
-# SQL-portofolio
-Progress about SQL mastery
+CRM-Sales-Opportunities
